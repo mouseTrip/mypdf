@@ -4,6 +4,7 @@
 
 ```bash
 cd server
+npm install
 npm run dev
 ```
 
@@ -13,6 +14,7 @@ npm run dev
 
 ```bash
 cd web
+npm install
 npm run serve
 ```
 
