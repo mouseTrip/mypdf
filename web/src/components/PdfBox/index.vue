@@ -2,10 +2,10 @@
   <div class="container">
     <div id="canvas-wrap" class="container__view"></div>
     <div class="container__toolbar">
-      <el-button type="primary" size="mini" @click="onDownload">
+      <el-button size="mini" @click="onDownload">
         下载
       </el-button>
-      <el-button type="primary" size="mini" @click="onPrint">
+      <el-button size="mini" @click="onPrint">
         打印
       </el-button>
     </div>
@@ -18,17 +18,19 @@
 </template>
 
 <script>
+import PDFJS from 'pdfjs-dist'
+import workerSrc from 'pdfjs-dist/build/pdf.worker.entry.js'
 import { Loading, Message } from 'element-ui'
 import { getPdf } from '@/request/api'
 import { fileDownloader } from '@/lib/utils'
-import PDFJS from 'pdfjs-dist'
+PDFJS.GlobalWorkerOptions.workerSrc = workerSrc
 export default {
   data() {
     return {
       pdfContent: null,
       pdfPage: 0,
-      pdfScale: 1.5,
-      pdfName: 'koa doc'
+      pdfScale: 1,
+      pdfName: '',
     }
   },
   computed: {
@@ -37,7 +39,7 @@ export default {
     },
     printBody() {
       return this.printWindow.document.body
-    }
+    },
   },
   mounted() {
     // 启动任务
@@ -47,13 +49,13 @@ export default {
     // 初始化pdf任务
     initPdf() {
       const loading = Loading.service({
-        target: 'body',
+        target: '.container__view',
         text: '加载PDF中...',
       })
       this.fetchPDFData()
         .then(pdf => {
-          loading.close()
           if (pdf) {
+            console.log(pdf)
             this.pdfContent = pdf
             this.pdfPage = pdf.numPages
             // 执行完【pdf => canvas】的任务后，执行【canvas => image】的任务
@@ -62,34 +64,34 @@ export default {
             })
           } else {
             Message.error({
-              message: '获取PDF失败'
+              message: '获取PDF失败',
             })
           }
         })
         .catch(error => {
-          loading.close()
-          console.error(error)
           Message.error({
-            message: error.toString()
+            message: error ? error.toString() : 'Unknown Error',
           })
+        })
+        .finally(() => {
+          loading.close()
         })
     },
     // 拉取PDF数据
     async fetchPDFData() {
-      return getPdf()
-        .then(async res => {
-          const { ret, data } = res
-          if (ret === 0) {
-            const { data: binaryData } = data
-            const loadingTask = PDFJS.getDocument({ data: binaryData })
-            return await loadingTask.promise
-          } else {
-            return Promise.resolve()
-          }
-        })
-        .catch(error => {
-          return Promise.reject(error)
-        })
+      try {
+        const { ret, data } = await getPdf()
+        if (ret === 0) {
+          const { file, fileName } = data
+          this.pdfName = fileName
+          const { data: binaryData } = file
+          const loadingTask = PDFJS.getDocument({ data: binaryData })
+          return loadingTask.promise
+        }
+      } catch (error) {
+        return Promise.reject(error)
+      }
+      Message.error('获取PDF失败')
     },
     // pdf => canvas
     renderCanvas() {
@@ -111,7 +113,7 @@ export default {
     // 创建canvas容器，并将1页pdf渲染上去
     appendPage(pageIndex) {
       return this.pdfContent.getPage(pageIndex).then(page => {
-        const viewport = page.getViewport(this.pdfScale)
+        const viewport = page.getViewport({ scale: this.pdfScale || 1 })
         //在页面中创建canvas
         const canvas = document.createElement('canvas')
         canvas.id = 'canvas_' + pageIndex
@@ -122,27 +124,27 @@ export default {
         // Render PDF page into canvas context
         const renderContext = {
           canvasContext: context,
-          viewport: viewport
+          viewport: viewport,
         }
-        return page.render(renderContext)
+        return page.render(renderContext).promise
       })
     },
     // 下载
     onDownload() {
       this.pdfContent.getData().then(data => {
         const blob = new Blob([data], { type: 'application/pdf' })
-        fileDownloader(blob, `${this.pdfName}.pdf`)
+        fileDownloader(blob, this.pdfName)
       })
     },
     // 打印
     onPrint() {
       this.printWindow.print()
-    }
-  }
+    },
+  },
 }
 </script>
 
-<style lang="scss">
+<style lang="less">
 .container {
   position: relative;
   width: 100%;
@@ -150,7 +152,9 @@ export default {
   &__view {
     width: 100%;
     padding-top: 44px;
+    min-height: calc(100% - 44px);
     text-align: center;
+    background: #333;
   }
   &__toolbar {
     position: fixed;

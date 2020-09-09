@@ -1,5 +1,8 @@
-import { get, post } from './http'
+import axios from 'axios'
 
-export async function getPdf() {
-  return await get('/getPdf')
+export function getPdf() {
+  return axios
+    .get('/api/getPdf')
+    .then(res => res.data)
+    .catch(error => Promise.reject(error))
 }

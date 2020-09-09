@@ -10,20 +10,23 @@ import PdfBox from './components/PdfBox'
 export default {
   name: 'app',
   components: {
-    PdfBox
-  }
+    PdfBox,
+  },
 }
 </script>
 
-<style lang="scss">
+<style>
 * {
   margin: 0;
   padding: 0;
+}
+html,body,#app {
+  height: 100%;
 }
 #app {
   font-family: 'PingFangSC-Regular', 'Avenir', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #333;
+  color: #333;
 }
 </style>
